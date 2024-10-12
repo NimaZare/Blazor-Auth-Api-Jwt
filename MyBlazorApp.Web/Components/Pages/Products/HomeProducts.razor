@@ -1,0 +1,104 @@
+﻿@page "/products"
+
+@inject ApiClient ApiClient
+@rendermode InteractiveServer
+@inject IToastService toastService
+@attribute [Authorize(Roles = "Admin,User")]
+
+<PageTitle>Product List</PageTitle>
+
+<h3>Product List</h3>
+<br />
+
+@if (ProductModels is null)
+{
+    <p>Loading data ...</p>
+}
+else
+{
+    <a class="btn btn-success" href="/products/create"><i class="bi bi-plus-circle-fill"></i> Create</a>
+    <br />
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Product Name</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Description</th>
+                <th>Created At</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in ProductModels)
+            {
+                <tr>
+                    <td>@item.ProductName</td>
+                    <td>@item.Quantity</td>
+                    <td>@item.Price</td>
+                    <td>@item.Description</td>
+                    <td>@item.CreateAt.ToShortDateString()</td>
+                    <td>
+                        <a class="btn btn-outline-secondary" href="/products/update/@item.ID"><i class="bi bi-pencil-square"></i></a>
+                        <AuthorizeView Roles="Admin">
+                            <Authorized>
+                                <button class="btn btn-outline-danger" @onclick="() => { DeleteID = item.ID; deleteName = item.ProductName; AppModal.Open(); }"><i class="bi bi-trash3-fill"></i></button>
+                            </Authorized>
+                        </AuthorizeView>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <AppModalComponent @ref="AppModal">
+        <Title>Notification</Title>
+        <Body>
+            Do you sure want to delete  <strong>@(deleteName)</strong>  product?
+        </Body>
+        <Footer>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @onclick="() => AppModal.Close()">Cancel</button>
+            <button type="button" class="btn btn-danger" @onclick="HandleDelete">Delete</button>
+        </Footer>
+    </AppModalComponent>
+}
+
+@code {
+
+    public long DeleteID { get; set; }
+    private string? deleteName;
+    public AppModalComponent AppModal { get; set; }
+    private List<ProductModel>? ProductModels { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        var res = await ApiClient.GetFromJsonAsync<BaseResponseModel<List<ProductModel>>>("/api/product");
+
+        if (res is not null && res.Success is true && res.Data is not null)
+        {
+            ProductModels = res.Data;
+        }
+    }
+
+    private async Task HandleDelete()
+    {
+        var res = await ApiClient.DeleteAsync<BaseResponseModel<ProductModel>>($"/api/product/{DeleteID}");
+
+        if (res is not null && res.Success is true)
+        {
+            toastService.ShowSuccess("SUCCESS: Product Deleted.");
+            await LoadProducts();
+            AppModal.Close();
+        }
+        else
+        {
+            toastService.ShowError("ERROR: Failed to delete product.");
+        }
+    }
+}

@@ -1,0 +1,73 @@
+﻿@page "/products/update/{ID:long}"
+
+@inject ApiClient ApiClient
+@rendermode InteractiveServer
+@inject IToastService toastService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Update Product</PageTitle>
+
+<h3>Update Product</h3>
+<br />
+<EditForm OnValidSubmit="Submit" Model="Model">
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label>Product Name</label>
+                <InputText class="form-control" @bind-Value="Model.ProductName" />
+                <ValidationMessage For="() => Model.ProductName" />
+            </div>
+            <div class="col-md-6">
+                <label>Quantity</label>
+                <InputNumber class="form-control" @bind-Value="Model.Quantity" />
+                <ValidationMessage For="() => Model.Quantity" />
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label>Price</label>
+                <InputNumber class="form-control" @bind-Value="Model.Price" />
+                <ValidationMessage For="() => Model.Price" />
+            </div>
+            <div class="col-md-6">
+                <label>Description</label>
+                <InputText class="form-control" @bind-Value="Model.Description" />
+                <ValidationMessage For="() => Model.Description" />
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Update</button>
+    </div>
+</EditForm>
+
+@code {
+
+    [Parameter]
+    public long ID { get; set; }
+
+    public ProductModel Model { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var res = await ApiClient.GetFromJsonAsync<BaseResponseModel<ProductModel>>($"/api/product/{ID}");
+
+        if (res is not null && res.Success is true)
+        {
+            Model = res.Data;
+        }
+    }
+
+    private async Task Submit()
+    {
+        var res = await ApiClient.PutAsync<BaseResponseModel<ProductModel>, ProductModel>($"/api/product/{ID}", Model);
+
+        if (res is not null && res.Success is true)
+        {
+            toastService.ShowSuccess("SUCCESS: Product Updated.");
+            NavigationManager.NavigateTo("/products");
+        }
+        else
+        {
+            toastService.ShowError("ERROR: Failed to update product.");
+        }
+    }
+}
